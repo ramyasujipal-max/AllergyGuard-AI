@@ -1,0 +1,61 @@
+.microsoft-blue-button {
+  padding: 10px 16px;
+  border-radius: 8px;
+  background-color: #0078D4;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.microsoft-blue-button:disabled {
+  background-color: #99c7f3;
+  cursor: default;
+}
+
+.microsoft-blue-button:hover:not(:disabled) {
+  background-color: #005a9e;
+}
+
+.allergyguardai-heading {
+  margin: 0;
+  color: #0078D4; /* Microsoft blue */
+  font-weight: 700;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.2); /* optional */
+  font-size: 54px;
+}
+
+.allergyguardai-subtitle {
+  color: #005a9e; /* A darker Microsoft blue */
+  font-size: 1rem;
+  margin-top: 11px;
+  font-weight: 500;
+  font-size: 30px;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+.button-primary {
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 6px 14px;
+  border-radius: 6px;
+  background-color: #0078D4;
+  color: white;
+  border: none;
+  font-weight: 600;
+}
+
+.button-secondary {
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 6px 14px;
+  border-radius: 6px;
+  background-color: #357ABD;
+  color: white;
+  border: none;
+  font-weight: 600;
+}
