@@ -62,7 +62,7 @@ function highlight(text: string, needles: string[]) {
 const bgStyle = {
   position: "relative" as const,
   minHeight: "100vh",
-  backgroundImage: "url('/images/background.jpg')",
+  backgroundImage: "url('/images/OIG3.jpg')",
   backgroundSize: "cover",
   backgroundPosition: "center",
   backgroundRepeat: "no-repeat",
@@ -93,7 +93,7 @@ export default function AllergyGuardAIApp() {
   const [results, setResults] = useState<Product[]>([]);
   const [picked, setPicked] = useState<Product | undefined>(undefined);
   const [profile, setProfile] = useState<Profile>(() => loadProfile());
-
+  const [isDiabetic, setIsDiabetic] = useState(false);
   // ---- NEW: nutrition state (must be inside component) ----
   const [nutrition, setNutrition] = useState<NutritionInfo | null>(null);
   const [nLoading, setNLoading] = useState(false);
@@ -240,7 +240,23 @@ export default function AllergyGuardAIApp() {
           </div>
           <small style={{ color: "#666" }}>Saved to this device only.</small>
         </section>
+		
+<label style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+  <input
+    type="checkbox"
+    checked={isDiabetic}
+    onChange={(e) => setIsDiabetic(e.target.checked)}
+    style={{
+      transform: "scale(1.5)", // makes it bigger
+      marginRight: "6px",
+      cursor: "pointer"
+    }}
+  />
+  <span style={{ fontSize: "1rem", fontWeight: 500 }}>I am diabetic</span>
+</label>
 
+
+		
         {/* Search Section */}
         <section style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <input
@@ -318,40 +334,78 @@ export default function AllergyGuardAIApp() {
             </div>
 
             {/* Nutrition Section (inside details) */}
-            <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed #ddd" }}>
-              <strong>Nutrition (per serving):</strong>
-              {nLoading && <div style={{ color: "#666", marginTop: 6 }}>Fetching nutrition…</div>}
-              {nError && <div style={{ color: "#b30000", marginTop: 6 }}>{nError}</div>}
+{/* Nutrition Section (inside details) */}
+<div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed #ddd" }}>
+  <strong>Nutrition (per serving):</strong>
+  {nLoading && <div style={{ color: "#666", marginTop: 6 }}>Fetching nutrition…</div>}
+  {nError && <div style={{ color: "#b30000", marginTop: 6 }}>{nError}</div>}
 
-              {nutrition && (
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                    <div>Calories: <b>{Math.round(nutrition.calories_kcal)}</b> kcal</div>
-                    <div>Carbs: <b>{Math.round(nutrition.carbs_g)}</b> g</div>
-                    <div>Sugar: <b>{Math.round(nutrition.sugar_g)}</b> g</div>
-                    <div style={{ color: "#666" }}>Serving: {nutrition.serving_desc}</div>
-                  </div>
+  {nutrition && (
+    <div style={{ marginTop: 8 }}>
+      {/* NEW: compute badge once */}
+      {(() => {
+        const badge = classifyCarbs(nutrition.carbs_g);
 
-                  {(() => {
-                    const badge = classifyCarbs(nutrition.carbs_g);
-                    return (
-                      <div style={{
-                        marginTop: 10, display: "inline-block", padding: "6px 10px",
-                        borderRadius: 999, border: `1px solid ${badge.color}`,
-                        color: badge.color, background: badge.bg, fontWeight: 600
-                      }}>
-                        {badge.label}
-                      </div>
-                    );
-                  })()}
+        if (isDiabetic) {
+          // Diabetic mode: only show guidance badge
+          return (
+            <>
+              <div
+                style={{
+                  marginTop: 4,
+                  display: "inline-block",
+                  padding: "8px 12px",
+                  borderRadius: 999,
+                  border: `1px solid ${badge.color}`,
+                  color: badge.color,
+                  background: badge.bg,
+                  fontWeight: 700,
+                  fontSize: "1rem",
+                }}
+              >
+                {badge.label}
+              </div>
+              <div style={{ marginTop: 6, color: "#777", fontSize: 12 }}>
+                Diabetic mode: showing carb-based guidance only.
+              </div>
+            </>
+          );
+        }
 
-                  <div style={{ marginTop: 6, color: "#777", fontSize: 12 }}>
-                    Match: {nutrition.matchType} • Source: {nutrition.source}
-                    {nutrition.raw_name ? ` • Found: ${nutrition.raw_name}` : ""}
-                  </div>
-                </div>
-              )}
+        // Normal mode: show full nutrition + badge
+        return (
+          <>
+            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <div>Calories: <b>{Math.round(nutrition.calories_kcal)}</b> kcal</div>
+              <div>Carbs: <b>{Math.round(nutrition.carbs_g)}</b> g</div>
+              <div>Sugar: <b>{Math.round(nutrition.sugar_g)}</b> g</div>
+              <div style={{ color: "#666" }}>Serving: {nutrition.serving_desc}</div>
             </div>
+            <div
+              style={{
+                marginTop: 10,
+                display: "inline-block",
+                padding: "6px 10px",
+                borderRadius: 999,
+                border: `1px solid ${badge.color}`,
+                color: badge.color,
+                background: badge.bg,
+                fontWeight: 600,
+              }}
+            >
+              {badge.label}
+            </div>
+            <div style={{ marginTop: 6, color: "#777", fontSize: 12 }}>
+              Match: {nutrition.matchType} • Source: {nutrition.source}
+              {nutrition.raw_name ? ` • Found: ${nutrition.raw_name}` : ""}
+            </div>
+          </>
+        );
+      })()}
+    </div>
+  )}
+</div>
+
 
             <div style={{
               marginTop: 12, padding: 10, borderRadius: 8,
