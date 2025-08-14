@@ -47,6 +47,9 @@ npm install
 # PORT=3001
 
 npm start
-...
 
-📂 [View Full Screenshots (PPTX)](Screenshots_AllergyGuardAI.pptx)
+📂 [Please refer to Screenshots_AllergyGuardAI.pptx in the root folder of the project](Screenshots_AllergyGuardAI.pptx)
+
+ 
+
+
