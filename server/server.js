@@ -116,7 +116,7 @@ app.post('/nutrition', async (req, res) => {
 // --- Ask AI route (Responses API, uses `input` instead of `messages`) ---
 app.post('/ask', async (req, res) => {
   try {
-	  const fakeResponse = [
+	  /* const fakeResponse = [
       "• Contains barley malt and gluten — potential allergen risk.",
       "• Moderate carbohydrate content (29g) per serving.",
       "• Low sugar content (4g) compared to carbs.",
@@ -124,7 +124,7 @@ app.post('/ask', async (req, res) => {
       "Verdict: Limit"
     ].join("\n");
 	 return res.json({ ok: true, text: fakeResponse });
-	 /*
+	*/
     const { product, nutrition, profile, isDiabetic } = req.body || {};
 
     const selectedAllergens = Object.entries(profile || {})
@@ -153,7 +153,7 @@ app.post('/ask', async (req, res) => {
     });
 
     const text = r.output_text || 'Sorry, I could not generate a summary.';
-    return res.json({ ok: true, text }); */
+    return res.json({ ok: true, text });  
   } catch (err) {
     console.error('[ASK][ERROR]', err);
     const status = err?.status || 500;
