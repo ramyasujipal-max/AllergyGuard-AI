@@ -47,4 +47,3 @@ npm install
 # PORT=3001
 
 npm start
-[📂 View Full Screenshots (PPTX)](/Screenshots_AllergyGuardAI.pptx)
