@@ -21,9 +21,15 @@ type NutritionInfo = {
 
 const API_BASE = "http://localhost:3001";
 
-function classifyCarbs(carbs: number) {
+function classifyCarbsAndSugar(carbs: number, sugar: number) {
+  // Sugar thresholds first (more impactful)
+  if (sugar > 20) return { label: "Avoid", color: "#d33", bg: "#ffecec" };
+  if (sugar >= 10) return { label: "Limit", color: "#a96d00", bg: "#fff4d6" };
+
+  // Carb thresholds
   if (carbs > 30) return { label: "Avoid", color: "#d33", bg: "#ffecec" };
   if (carbs >= 15) return { label: "Limit", color: "#a96d00", bg: "#fff4d6" };
+
   return { label: "Eat", color: "#1a7f37", bg: "#e9f7ef" };
 }
 
@@ -62,7 +68,7 @@ function highlight(text: string, needles: string[]) {
 const bgStyle = {
   position: "relative" as const,
   minHeight: "100vh",
-  backgroundImage: "url('/images/OIG3.jpg')",
+  backgroundImage: "url('/images/OIG4.jpg')",
   backgroundSize: "cover",
   backgroundPosition: "center",
   backgroundRepeat: "no-repeat",
@@ -87,17 +93,23 @@ const contentStyle = {
 };
 
 export default function AllergyGuardAIApp() {
-  // ---- existing state ----
+  // ---- state ----
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Product[]>([]);
   const [picked, setPicked] = useState<Product | undefined>(undefined);
   const [profile, setProfile] = useState<Profile>(() => loadProfile());
   const [isDiabetic, setIsDiabetic] = useState(false);
-  // ---- NEW: nutrition state (must be inside component) ----
+
+  // nutrition state
   const [nutrition, setNutrition] = useState<NutritionInfo | null>(null);
   const [nLoading, setNLoading] = useState(false);
   const [nError, setNError] = useState<string | null>(null);
+
+  // ✅ AI state (must be inside the component)
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiAnswer, setAiAnswer] = useState<string>("");
 
   useEffect(() => saveProfile(profile), [profile]);
 
@@ -199,6 +211,47 @@ export default function AllergyGuardAIApp() {
     }
   }
 
+  // Ask AI handler
+async function askAI() {
+  if (!picked) return;
+  setAiLoading(true);
+  setAiError(null);
+  setAiAnswer("");
+
+  try {
+    const r = await fetch(`${API_BASE}/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        product: picked,
+        nutrition,   // can be null
+        profile,
+        isDiabetic
+      }),
+    });
+
+    // Try to decode JSON; if it fails, report raw HTTP error
+    let j: any = null;
+    try {
+      j = await r.json();
+    } catch {
+      throw new Error(`HTTP ${r.status} ${r.statusText}`);
+    }
+
+    if (!r.ok || j?.ok === false) {
+      throw new Error(j?.error || `HTTP ${r.status} ${r.statusText}`);
+    }
+
+    setAiAnswer(j.text || "");
+  } catch (e: any) {
+    console.error("Ask AI failed:", e);
+    setAiError(e?.message || "AI request failed");
+  } finally {
+    setAiLoading(false);
+  }
+}
+
+
   const pickedRisk = riskFor(picked);
   const highlighted = picked?.ingredients_text
     ? highlight(picked.ingredients_text, selectedLabels)
@@ -209,7 +262,7 @@ export default function AllergyGuardAIApp() {
       <div style={overlayStyle} />
       <div style={contentStyle}>
         <h1 className="allergyguardai-heading">🥗 AllergyGuardAI</h1>
-        <p className="allergyguardai-subtitle">Instant allergen check for packaged foods.</p>
+        <p className="allergyguardai-subtitle">AI-powered allergen and calorie checks for packaged foods.</p>
 
         {/* Profile Section */}
         <section style={{
@@ -240,23 +293,17 @@ export default function AllergyGuardAIApp() {
           </div>
           <small style={{ color: "#666" }}>Saved to this device only.</small>
         </section>
-		
-<label style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-  <input
-    type="checkbox"
-    checked={isDiabetic}
-    onChange={(e) => setIsDiabetic(e.target.checked)}
-    style={{
-      transform: "scale(1.5)", // makes it bigger
-      marginRight: "6px",
-      cursor: "pointer"
-    }}
-  />
-  <span style={{ fontSize: "1rem", fontWeight: 500 }}>I am diabetic</span>
-</label>
 
+        <label style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+          <input
+            type="checkbox"
+            checked={isDiabetic}
+            onChange={(e) => setIsDiabetic(e.target.checked)}
+            style={{ transform: "scale(1.5)", marginRight: "6px", cursor: "pointer" }}
+          />
+          <span style={{ fontSize: "1rem", fontWeight: 500 }}>I am diabetic</span>
+        </label>
 
-		
         {/* Search Section */}
         <section style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <input
@@ -266,9 +313,15 @@ export default function AllergyGuardAIApp() {
             style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid #ddd", fontSize: "1.1rem" }}
             onKeyDown={(e) => e.key === "Enter" && search()}
           />
-          <button onClick={search} disabled={loading} className="microsoft-blue-button">
-            {loading ? "Searching…" : "Search"}
-          </button>
+			<button className="search-btn"  onClick={search} disabled={loading}>
+			  {loading ? (
+				<>
+				  <span className="spinner" /> Searching...
+				</>
+			  ) : (
+				"Search"
+			  )}
+			</button>
         </section>
 
         {/* Results Section */}
@@ -279,7 +332,7 @@ export default function AllergyGuardAIApp() {
               return (
                 <div
                   key={p.code}
-                  onClick={() => setPicked(p)}
+                  onClick={() => { setPicked(p); setAiAnswer(""); }}
                   style={{
                     cursor: "pointer",
                     border: "1px solid #eee",
@@ -333,79 +386,103 @@ export default function AllergyGuardAIApp() {
                 : <i>none listed</i>}
             </div>
 
-            {/* Nutrition Section (inside details) */}
-{/* Nutrition Section (inside details) */}
-<div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed #ddd" }}>
-  <strong>Nutrition (per serving):</strong>
-  {nLoading && <div style={{ color: "#666", marginTop: 6 }}>Fetching nutrition…</div>}
-  {nError && <div style={{ color: "#b30000", marginTop: 6 }}>{nError}</div>}
+            {/* Nutrition Section */}
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed #ddd" }}>
+              <strong>Nutrition (per serving):</strong>
+              {nLoading && <div style={{ color: "#666", marginTop: 6 }}>Fetching nutrition…</div>}
+              {nError && <div style={{ color: "#b30000", marginTop: 6 }}>{nError}</div>}
 
-  {nutrition && (
-    <div style={{ marginTop: 8 }}>
-      {/* NEW: compute badge once */}
-      {(() => {
-        const badge = classifyCarbs(nutrition.carbs_g);
+              {nutrition && (
+                <div style={{ marginTop: 8 }}>
+                  {(() => {
+                    const badge = isDiabetic
+                      ? classifyCarbsAndSugar(nutrition.carbs_g, nutrition.sugar_g)
+                      : null;
 
-        if (isDiabetic) {
-          // Diabetic mode: only show guidance badge
-          return (
-            <>
-              <div
-                style={{
-                  marginTop: 4,
-                  display: "inline-block",
-                  padding: "8px 12px",
-                  borderRadius: 999,
-                  border: `1px solid ${badge.color}`,
-                  color: badge.color,
-                  background: badge.bg,
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                }}
-              >
-                {badge.label}
-              </div>
-              <div style={{ marginTop: 6, color: "#777", fontSize: 12 }}>
-                Diabetic mode: showing carb-based guidance only.
-              </div>
-            </>
-          );
-        }
+                    return (
+                      <>
+                        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                          <div>Calories: <b>{Math.round(nutrition.calories_kcal)}</b> kcal</div>
+                          <div>Carbs: <b>{Math.round(nutrition.carbs_g)}</b> g</div>
+                          <div>Sugar: <b>{Math.round(nutrition.sugar_g)}</b> g</div>
+                          <div style={{ color: "#666" }}>Serving: {nutrition.serving_desc}</div>
+                        </div>
 
-        // Normal mode: show full nutrition + badge
-        return (
-          <>
-            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-              <div>Calories: <b>{Math.round(nutrition.calories_kcal)}</b> kcal</div>
-              <div>Carbs: <b>{Math.round(nutrition.carbs_g)}</b> g</div>
-              <div>Sugar: <b>{Math.round(nutrition.sugar_g)}</b> g</div>
-              <div style={{ color: "#666" }}>Serving: {nutrition.serving_desc}</div>
+                        {/* Ask AI button */}
+                        <div style={{ marginTop: 12 }}>
+                          <button onClick={askAI} disabled={aiLoading} className="microsoft-blue-button">
+                            {aiLoading ? "Asking AI About This Food…" : "Ask AI About This Food"}
+                          </button>
+                          {aiError && <div style={{ color: "#b30000", marginTop: 6, fontSize: 12 }}>{aiError}</div>}
+                        </div>
+
+                        {/* AI answer */}
+                        {aiAnswer && (
+                          <div
+                            style={{
+                              marginTop: 12,
+                              padding: "12px 14px",
+                              background: "#fff",
+                              borderRadius: 12,
+                              border: "2px solid #0078D4",
+                              boxShadow: "0 2px 8px rgba(0,120,212,0.12)",
+                              whiteSpace: "pre-wrap",
+                              lineHeight: 1.35
+                            }}
+                          >
+                            <div style={{ fontWeight: 700, marginBottom: 6, color: "#0078D4" }}>AI summary</div>
+                            {aiAnswer}
+                            <div style={{ marginTop: 8, color: "#777", fontSize: 12 }}>Not medical advice.</div>
+                          </div>
+                        )}
+
+                        {/* Guidance badge (diabetic mode only) */}
+                        {badge && (
+                          <>
+                            <div
+                              style={{
+                                marginTop: 10,
+                                display: "inline-block",
+                                padding: "8px 12px",
+                                borderRadius: 999,
+                                border: `1px solid ${badge.color}`,
+                                color: badge.color,
+                                background: badge.bg,
+                                fontWeight: 700,
+                                fontSize: "1rem",
+                              }}
+                            >
+                              {badge.label}
+                            </div>
+
+                            <div
+                              style={{
+                                marginTop: 8,
+                                color: "#333",
+                                fontSize: "14px",
+                                fontWeight: 500,
+                                background: "#fff",
+                                padding: "8px 12px",
+                                borderRadius: "8px",
+                                border: `2px solid ${badge.color}`,
+                                boxShadow: `0 1px 4px ${badge.color}33`,
+                              }}
+                            >
+                              Diabetic mode: guidance based on both carbs and sugar.
+                            </div>
+                          </>
+                        )}
+
+                        <div style={{ marginTop: 6, color: "#777", fontSize: 12 }}>
+                          Match: {nutrition.matchType} • Source: {nutrition.source}
+                          {nutrition.raw_name ? ` • Found: ${nutrition.raw_name}` : ""}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
-            <div
-              style={{
-                marginTop: 10,
-                display: "inline-block",
-                padding: "6px 10px",
-                borderRadius: 999,
-                border: `1px solid ${badge.color}`,
-                color: badge.color,
-                background: badge.bg,
-                fontWeight: 600,
-              }}
-            >
-              {badge.label}
-            </div>
-            <div style={{ marginTop: 6, color: "#777", fontSize: 12 }}>
-              Match: {nutrition.matchType} • Source: {nutrition.source}
-              {nutrition.raw_name ? ` • Found: ${nutrition.raw_name}` : ""}
-            </div>
-          </>
-        );
-      })()}
-    </div>
-  )}
-</div>
-
 
             <div style={{
               marginTop: 12, padding: 10, borderRadius: 8,

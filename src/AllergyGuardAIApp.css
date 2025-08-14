@@ -18,9 +18,20 @@
   background-color: #005a9e;
 }
 
+.search-btn {
+  background-color: #007bff;
+  border: none;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
 .allergyguardai-heading {
   margin: 0;
-  color: #0078D4; /* Microsoft blue */
+  /*color: #0078D4;  Microsoft blue */
+  color: #B8860B;
   font-weight: 700;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   text-shadow: 0 1px 3px rgba(0,0,0,0.2); /* optional */
@@ -58,4 +69,21 @@
   color: white;
   border: none;
   font-weight: 600;
+}
+
+.spinner {
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
